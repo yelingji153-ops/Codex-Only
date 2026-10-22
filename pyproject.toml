@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "acane-workbench"
+version = "0.1.0"
+description = "ACAね audio dataset preparation workbench"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.optional-dependencies]
+separation-cpu = ["audio-separator[cpu]==0.47.1", "audioread==3.1.0"]
+separation-gpu = ["audio-separator[gpu]==0.47.1", "audioread==3.1.0"]
+
+[project.scripts]
+acane = "acane.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["acane*"]

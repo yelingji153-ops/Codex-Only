@@ -1,0 +1,58 @@
+# 验证记录（2026-10-22）
+
+## 当前云端环境
+
+- Linux x86_64，Python 3.12.14，FFmpeg / ffprobe 7.1.5。
+- 独立分离环境：`/workspace/acane-separation-env`。
+- audio-separator 0.47.1、PyTorch 2.14.1+cpu、torchvision 0.29.1+cpu、
+  ONNX Runtime 1.31.0。完整清单见根目录 CPU Linux requirements 文件。
+- `pip check` 通过；`scripts/setup_cpu.sh` 在已安装环境上重跑成功。
+  尚未在全新云任务上验证快照恢复。
+
+## 自动测试
+
+命令：`python -m unittest discover -s tests -v`。
+
+结果：14 项测试通过，0 失败、0 跳过。
+
+覆盖：原件字节不变、元数据、重复导入与来源关系、坏文件隔离、文件缺失、
+数据库重开、归档损坏检测、资料库自身排除、WAV/FLAC/MP3/视频音轨、
+无音轨视频拒绝、CSV 公式转义、命令行失败状态、任务超时与重试、
+结果缓存及结果缺失后的重新处理、资料库复制后的相对路径。
+
+其中分离缓存和超时测试使用明确的后端替身，仅测试任务控制逻辑。
+测试文件由 FFmpeg 生成，不含用户正式素材。
+
+## 真实分离后端冒烟测试
+
+输入：本地生成的 3 秒、44.1kHz、双声道 440Hz 正弦信号。
+模型：通过后端从上游下载的 `UVR_MDXNET_KARA_2.onnx`。
+执行环境：CPU，`OMP_NUM_THREADS=2 MKL_NUM_THREADS=2`。
+
+```sh
+python -m acane --library /workspace/acane-smoke-data import /tmp/acane-smoke-input
+OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 python -m acane --library /workspace/acane-smoke-data separate --all --model UVR_MDXNET_KARA_2.onnx --python /workspace/acane-separation-env/bin/python --timeout 240
+python -m acane --library /workspace/acane-smoke-data report
+```
+
+实际后端成功执行，产生 Vocals 和 Instrumental 两个可由 ffprobe 读取的 WAV，
+均为 3 秒、44.1kHz、双声道；输出记录有 SHA-256。再次执行返回 `cached`，
+成功导出 CSV 报告。当前实例证据保存在 `/workspace/acane-smoke-data`，不提交 Git。
+
+这个测试证明模型下载、API 调用、音轨写入、元数据检查、任务持久化与结果复用能联通。
+正弦信号不能检验歌手素材的分离质量、音色相似度、气声/高音保留或训练价值。
+
+## 已解决的环境问题
+
+1. Python 的默认构建配置指向不可用的 clang；显式使用现有 GCC/G++ 编译 diffq。
+2. audio-separator 运行时直接引用 audioread，但当前解析的依赖不包含它；补充 3.1.0。
+3. PyPI torchvision 与 CPU Torch 配套不一致，出现 `torchvision::nms` 缺失；
+   改为从官方 CPU 索引安装对应 CPU torchvision，保留正常 TLS 验证。
+
+这些问题已写入安装脚本或依赖声明；之前失败的任务记录保留用于追踪。
+
+## 未验证
+
+Windows 安装与图形界面、RTX 5070 CUDA/ONNX 加速、RoFormer 模型、长音频负载、
+真实素材听感、人工复核和训练集导出、声线训练、完整歌曲转换都尚未验收。
+项目尚处第一阶段基础交付，不能把本记录理解为完整产品验收。
