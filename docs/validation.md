@@ -77,3 +77,8 @@ GPU 检查脚本只检查设备、矩阵及 FFT 运算能力，不把它当作�
 新增 GPU 安装入口：使用独立虚拟环境、固定 torch 2.8.0+cu128 / torchvision 0.23.0+cu128，
 已查询 PyTorch 官方索引确认两者存在 CPython 3.12 Windows amd64 安装包。
 安装脚本与此 GPU 组合尚未在 Windows 实机执行；等待本机安装及矩阵/FFT 检查报告。
+
+用户首次执行安装入口仅得到 “The system cannot find the path specified.”，
+尚不能据此确定具体路径或证明 Python/GPU 安装成功。V2 优先检查常见安装位置，
+统一 Python 路径输出为 UTF-8，校验启动器退出码及文件存在性，增加分阶段路径日志。
+Windows 路径修正仍待用户实机重试；没有进行 GPU 推理。

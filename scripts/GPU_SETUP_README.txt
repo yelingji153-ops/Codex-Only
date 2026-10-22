@@ -1,3 +1,7 @@
+V2 路径检测修正版：已安装 Python 的用户无需重装。
+将本包解压到上次使用的同一文件夹，替换工具文件后重新运行 Install_GPU.cmd。
+保留原有 .venv-separation 文件夹；新版会尝试复用。失败时上传新版 gpu-setup-log.txt。
+
 ACAね Windows GPU 环境准备
 
 首次报告已识别 RTX 5070 及驱动，但没有找到可用的 Python。
