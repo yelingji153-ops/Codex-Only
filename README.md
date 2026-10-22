@@ -107,3 +107,7 @@ Windows 使用分离环境的 `.venv-separation\Scripts\python.exe` 作为 `--py
 
 云端环境发布保存开发环境；GitHub 保存已推送代码；个人素材备份需要单独管理。
 当前云端测试不能证明 Windows 桌面和 RTX 5070 已通过验收。
+
+Windows 首次准备：先安装官方 Python 3.12 64 位，再运行 `scripts/setup_gpu_windows.cmd`。
+它会在脚本旁创建独立环境并安装 GPU PyTorch；具体步骤及安装范围见
+[scripts/GPU_SETUP_README.txt](scripts/GPU_SETUP_README.txt)。该安装入口尚待 Windows 实机验证。

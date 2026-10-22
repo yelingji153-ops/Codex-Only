@@ -72,4 +72,8 @@ Windows 安装与图形界面、RTX 5070 CUDA/ONNX 加速、RoFormer 全批效�
 GPU 检查脚本只检查设备、矩阵及 FFT 运算能力，不把它当作模型推理验收。
 
 本地诊断脚本在云端 CPU 环境中正确报告 CUDA 不可用并返回非零状态。
-Windows 双击入口与 RTX 5070 运算尚待用户本机验证；检查包不会安装依赖。
+用户已运行 Windows 检查入口：识别 RTX 5070、驱动 617.42、12227 MiB 显存，未找到 Python；尚未运行 CUDA 运算。
+
+新增 GPU 安装入口：使用独立虚拟环境、固定 torch 2.8.0+cu128 / torchvision 0.23.0+cu128，
+已查询 PyTorch 官方索引确认两者存在 CPython 3.12 Windows amd64 安装包。
+安装脚本与此 GPU 组合尚未在 Windows 实机执行；等待本机安装及矩阵/FFT 检查报告。
