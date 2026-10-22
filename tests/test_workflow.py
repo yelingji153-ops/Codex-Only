@@ -170,6 +170,52 @@ class WorkflowTest(unittest.TestCase):
         statuses = [row[0] for row in self.library.db.execute("SELECT status FROM jobs")]
         self.assertEqual(statuses, ["failed", "failed"])
 
+    def test_parameter_changes_do_not_reuse_other_separation_results(self):
+        item = self.library.import_one(self.audio)
+        real_run = subprocess.run
+        received = []
+
+        def run(command, **kwargs):
+            if len(command) > 1 and command[1] == "-c":
+                return subprocess.CompletedProcess(command, 0, stdout="test-version\n")
+            if len(command) > 1 and command[1].endswith("worker.py"):
+                received.append(json.loads(command[7]) if len(command) > 7 else None)
+                output = Path(command[3]) / "vocals.wav"
+                shutil.copyfile(command[2], output)
+                Path(command[6]).write_text(json.dumps([str(output)]), encoding="utf-8")
+                return subprocess.CompletedProcess(command, 0)
+            return real_run(command, **kwargs)
+
+        approved = {"segment_size": 256, "override_model_segment_size": True, "overlap": 2, "batch_size": 1}
+        with patch("acane.library.subprocess.run", side_effect=run):
+            default = self.library.separate(item["id"], "test.ckpt")
+            configured = self.library.separate(item["id"], "test.ckpt", mdxc_params=approved)
+            self.assertNotEqual(default["id"], configured["id"])
+            self.assertEqual(self.library.separate(item["id"], "test.ckpt", mdxc_params=dict(reversed(list(approved.items()))))["status"], "cached")
+            changed = self.library.separate(item["id"], "test.ckpt", mdxc_params={**approved, "overlap": 4})
+            self.assertNotEqual(configured["id"], changed["id"])
+        self.assertEqual(received, [None, approved, {**approved, "overlap": 4}])
+        saved = self.library.db.execute("SELECT parameters FROM jobs WHERE id=?", (configured["id"],)).fetchone()[0]
+        self.assertEqual(json.loads(saved)["mdxc_params"], approved)
+
+    def test_bad_parameters_are_rejected_before_any_job_is_created(self):
+        item = self.library.import_one(self.audio)
+        for invalid in ({"segment_size": 1}, {"overlap": 0}, {"overlap": True},
+                        {"override_model_segment_size": "true"}, {"unknown": 1}):
+            with self.assertRaises(ValueError):
+                self.library.separate(item["id"], "test.ckpt", mdxc_params=invalid)
+        self.assertEqual(self.library.db.execute("SELECT COUNT(*) FROM jobs").fetchone()[0], 0)
+
+    def test_cli_passes_the_approved_roformer_configuration(self):
+        item = self.library.import_one(self.audio)
+        with patch.object(Library, "separate", return_value={"status": "succeeded"}) as separate:
+            with redirect_stdout(io.StringIO()):
+                code = main(["--library", str(self.library.root), "separate", "--asset", item["id"],
+                             "--model", "test.ckpt", "--segment-size", "256", "--overlap", "2"])
+        self.assertEqual(code, 0)
+        self.assertEqual(separate.call_args.kwargs["mdxc_params"],
+                         {"segment_size": 256, "override_model_segment_size": True, "overlap": 2, "batch_size": 1})
+
 
 if __name__ == "__main__":
     unittest.main()

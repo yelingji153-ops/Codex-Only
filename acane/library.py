@@ -180,11 +180,23 @@ class Library:
                                      value.lstrip().startswith(("=", "+", "-", "@")) else value for value in row])
         return directory
 
-    def separate(self, asset_id, model, python=sys.executable, timeout=3600, force=False):
+    def separate(self, asset_id, model, python=sys.executable, timeout=3600, force=False, mdxc_params=None):
         if not model or Path(model).name != model or any(c in model for c in ("/", "\\", ":")):
             raise ValueError("模型必须是后端模型目录中的文件名，不能包含路径。")
         if timeout <= 0:
             raise ValueError("超时必须大于零。")
+        if mdxc_params is not None:
+            allowed = {"segment_size", "override_model_segment_size", "overlap", "batch_size"}
+            if not isinstance(mdxc_params, dict) or set(mdxc_params) - allowed:
+                raise ValueError("不支持的 MDXC 参数。")
+            mdxc_params = dict(mdxc_params)
+            for key, value in mdxc_params.items():
+                if key == "override_model_segment_size":
+                    valid = isinstance(value, bool)
+                else:
+                    valid = type(value) is int and value >= (2 if key == "segment_size" else 1)
+                if not valid:
+                    raise ValueError(f"MDXC 参数无效：{key}")
         asset = self.asset(asset_id)
         original = self.root / asset["original_path"]
         if digest(original) != asset_id:
@@ -195,9 +207,12 @@ class Library:
                                  capture_output=True, text=True, timeout=30)
         if version.returncode:
             raise ValueError("指定的 Python 未安装 audio-separator。请按 README 配置独立分离环境。")
-        parameters = json.dumps({"model": model, "backend": "audio-separator",
-                                 "version": version.stdout.strip(), "format": "WAV",
-                                 "input": "first-audio-stream-float32"}, sort_keys=True)
+        settings = {"model": model, "backend": "audio-separator",
+                    "version": version.stdout.strip(), "format": "WAV",
+                    "input": "first-audio-stream-float32"}
+        if mdxc_params:
+            settings["mdxc_params"] = mdxc_params
+        parameters = json.dumps(settings, sort_keys=True)
         if not force:
             rows = self.db.execute("""SELECT * FROM jobs WHERE asset_id=? AND parameters=?
                 AND status='succeeded' ORDER BY started_at DESC""", (asset_id, parameters))
@@ -217,9 +232,12 @@ class Library:
             extract_audio(original, inference_input)
             manifest = directory / "outputs.json"
             worker = Path(__file__).with_name("worker.py")
+            command = [str(python), str(worker), str(inference_input),
+                       str(directory), str(self.root / "models"), model, str(manifest)]
+            if mdxc_params:
+                command.append(json.dumps(mdxc_params, sort_keys=True))
             with (directory / "backend.log").open("w", encoding="utf-8") as log:
-                result = subprocess.run([str(python), str(worker), str(inference_input),
-                                         str(directory), str(self.root / "models"), model, str(manifest)],
+                result = subprocess.run(command,
                                         stdout=log, stderr=subprocess.STDOUT, timeout=timeout)
             if result.returncode:
                 raise MediaError(f"分离失败，退出码 {result.returncode}；查看 {directory / 'backend.log'}")

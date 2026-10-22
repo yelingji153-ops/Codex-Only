@@ -50,6 +50,7 @@ CPU 版 Torch 和 torchvision 必须匹配，避免 `torchvision::nms` 算子加
 此版本清单仅对应云端 Linux CPU 环境，不是 Windows GPU 锁文件。
 
 `UVR_MDXNET_KARA_2.onnx` 是工程联通测试候选，不代表对 ACAね 素材的最佳选择。
+实际批量试听已表明该模型对这批弹唱的伴奏残留过多，不应继续作为默认训练素材处理方案。
 模型名必须来自后端支持列表，首次使用需要下载模型。切换模型名会建立独立处理版本。
 只处理单条素材时，用 `--asset <list 输出中的完整 id>` 替代 `--all`。
 成功结果文件校验通过时再次调用会返回 `cached`；`--force` 可生成新版本，保留旧结果。
@@ -60,6 +61,27 @@ CPU 版 Torch 和 torchvision 必须匹配，避免 `torchvision::nms` 算子加
 RTX 5070 的 GPU 环境需要另行验证驱动、PyTorch CUDA 架构支持及 ONNX Runtime provider。
 CPU 安装命令不能用作 GPU 配置。当前不提供未经本地验证的“一键 GPU 安装”承诺。
 模型权重使用条件需逐个核实；代码许可证不能自动代表所有权重的许可。
+
+## 已通过短片试听的 BS-RoFormer 配置
+
+当前通过用户试听的是同一素材的 10 秒 BS-RoFormer 样本。下面的分块设置与该样本一致：
+
+```sh
+python -m acane --library workspace-data separate --all --model model_bs_roformer_ep_317_sdr_12.9755.ckpt --segment-size 256 --overlap 2 --python .venv-separation/bin/python --timeout 14400
+```
+
+Windows 使用分离环境的 `.venv-separation\Scripts\python.exe` 作为 `--python` 值。
+命令必须指向已经配置好的分离环境；本仓库目前尚未验证 Windows GPU 安装组合。
+指定分块帧数时自动开启模型分块覆盖，批次为 1。参数进入任务记录和结果缓存键，
+改变分块或重叠设置会创建独立结果，不会误用旧参数结果。
+
+在目标 Windows 电脑先执行 `py -3.12 scripts/check_gpu.py`，或用已有 AI 环境的 Python
+执行该脚本。它报告驱动、CUDA 可见性及依赖版本，并尝试小规模 CUDA 矩阵和 FFT 运算。
+不安装或改动系统软件；不读取密钥。它通过也不代表整个分离模型已验证，仍需做真实短片推理。
+
+这套配置在云端 CPU 上处理 10 秒样本约需 137 秒（含加载和写入），
+11 分钟整批粗估约 2–3 小时，实际随素材和负载变化。RTX 5070 实测速度尚未知。
+短片试听通过不等于整批训练素材已通过；完整结果仍需逐条复核。
 
 ## 文件与跨电脑交接
 

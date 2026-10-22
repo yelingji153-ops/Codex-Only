@@ -27,6 +27,8 @@ def main(argv=None):
     separation.add_argument("--model", required=True, help="audio-separator 支持的完整模型文件名")
     separation.add_argument("--python", default=sys.executable, help="分离环境中的 Python 路径")
     separation.add_argument("--timeout", type=int, default=3600)
+    separation.add_argument("--segment-size", type=int, help="RoFormer/MDXC 分块帧数；指定后覆盖模型默认值")
+    separation.add_argument("--overlap", type=int, help="RoFormer/MDXC 重叠窗口数")
     separation.add_argument("--force", action="store_true", help="保留旧结果并生成新的处理版本")
     args = parser.parse_args(argv)
     try:
@@ -44,11 +46,19 @@ def main(argv=None):
             elif args.command == "report":
                 data, failed = {"report_dir": str(library.report())}, False
             else:
+                mdxc_params = None
+                if args.segment_size is not None or args.overlap is not None:
+                    mdxc_params = {"batch_size": 1}
+                    if args.segment_size is not None:
+                        mdxc_params.update(segment_size=args.segment_size, override_model_segment_size=True)
+                    if args.overlap is not None:
+                        mdxc_params["overlap"] = args.overlap
                 ids = [asset["id"] for asset in library.assets()] if args.all else [args.asset]
                 data = []
                 for asset_id in ids:
                     try:
-                        data.append(library.separate(asset_id, args.model, args.python, args.timeout, args.force))
+                        data.append(library.separate(asset_id, args.model, args.python, args.timeout, args.force,
+                                                     mdxc_params=mdxc_params))
                     except (OSError, ValueError, subprocess.SubprocessError) as exc:
                         data.append({"asset": asset_id, "status": "failed", "error": str(exc)})
                 failed = not data or any(item["status"] == "failed" for item in data)
