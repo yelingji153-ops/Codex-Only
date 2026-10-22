@@ -1,0 +1,9 @@
+{
+  "ffmpeg_url": "https://github.com/GyanD/codexffmpeg/releases/download/7.1.1/ffmpeg-7.1.1-essentials_build.zip",
+  "ffmpeg_sha256": "04861d3339c5ebe38b56c19a15cf2c0cc97f5de4fa8910e4d47e5e6404e4a2d4",
+  "model_url": "https://github.com/TRvlvr/model_repo/releases/download/all_public_uvr_models/model_bs_roformer_ep_317_sdr_12.9755.ckpt",
+  "model_sha256": "5b84f37e8d444c8cb30c79d77f613a41c05868ff9c9ac6c7049c00aefae115aa",
+  "config_sha256": "2bfdd16c656bd9519aba757cc4f8834b7ede675eb1e00ec4772d74ae1c41af7f",
+  "sample_sha256": "bd2dbc8ebf16bbf21c0d0ee4b1b28d26ef980362fbba4f762333a69fcf5ae545",
+  "sample_description": "TAIDADA original recording seconds 10-20; same input as approved cloud preview"
+}

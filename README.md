@@ -111,3 +111,7 @@ Windows 使用分离环境的 `.venv-separation\Scripts\python.exe` 作为 `--py
 Windows 首次准备：先安装官方 Python 3.12 64 位，再运行 `scripts/setup_gpu_windows.cmd`。
 它会在脚本旁创建独立环境并安装 GPU PyTorch；具体步骤及安装范围见
 [scripts/GPU_SETUP_README.txt](scripts/GPU_SETUP_README.txt)。该安装入口尚待 Windows 实机验证。
+
+GPU 基础检查通过后，可使用 `scripts/windows_backend/` 的后端准备入口；
+下载包应解压到已有 `.venv-separation` 同级，详见其 `README.txt`。
+它先安装 FFmpeg/分离依赖，再验证真实 10 秒 RoFormer CUDA 推理；还不自动运行整批或训练。

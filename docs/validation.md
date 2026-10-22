@@ -13,7 +13,7 @@
 
 命令：`python -m unittest discover -s tests -v`。
 
-结果：当前 18 项测试通过，0 失败、0 跳过（初版为 14 项）。
+结果：当前 21 项测试通过，0 失败、0 跳过（初版为 14 项）。
 
 覆盖：原件字节不变、元数据、重复导入与来源关系、坏文件隔离、文件缺失、
 数据库重开、归档损坏检测、资料库自身排除、WAV/FLAC/MP3/视频音轨、
@@ -82,3 +82,16 @@ GPU 检查脚本只检查设备、矩阵及 FFT 运算能力，不把它当作�
 尚不能据此确定具体路径或证明 Python/GPU 安装成功。V2 优先检查常见安装位置，
 统一 Python 路径输出为 UTF-8，校验启动器退出码及文件存在性，增加分阶段路径日志。
 Windows 路径修正仍待用户实机重试；没有进行 GPU 推理。
+
+## 本地 GPU 基础检查已通过
+
+用户回传 Windows Python 3.12.10，torch 2.8.0+cu128、torchvision 0.23.0+cu128；
+RTX 5070 驱动 617.42，显存 12227 MiB，compute capability 12.0，编译架构包含 sm_120。
+CUDA 矩阵与 FFT 检查成功；此时 FFmpeg、ffprobe 和 audio-separator 尚未安装，实际模型未测试。
+
+新增后端准备脚本，固定当前 Torch 版本；采用 audio-separator[gpu] 0.47.1、
+ONNX Runtime GPU 1.23.2、audioread 3.1.0。已核对 Windows CPython 3.12 的
+diffq-fixed 和 ONNX Runtime GPU wheel 存在；尚未在 Windows 上完成整个依赖解析/安装。
+FFmpeg 7.1.1 ZIP 已下载并通过 CRC、成员检查及 SHA-256 记录；未在云端执行 Windows 程序。
+3 项新增测试覆盖校验后缓存复用、损坏文件不替换现有文件、禁止无 CUDA 时静默回退。
+准备包内的 TAIDADA 10 秒原声和模型配置哈希与云端试听一致；GPU 实际模型推理待用户运行。
