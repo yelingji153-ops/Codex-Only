@@ -22,7 +22,7 @@ def digest(path):
         return hashlib.file_digest(stream, 'sha256').hexdigest()
 
 
-def download(url, target, expected):
+def download(url, target, expected, offline=False):
     """Keep complete verified files; never accept a partial download as a model."""
     target = Path(target)
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -31,6 +31,8 @@ def download(url, target, expected):
             raise ValueError(f'Existing file hash mismatch; file preserved: {target}')
         print('Using verified cache:', target.name, flush=True)
         return
+    if offline:
+        raise ValueError(f'Offline bundle file missing; extract the complete package: {target}')
     partial = target.with_suffix(target.suffix + '.partial')
     print('Downloading:', target.name, flush=True)
     with urllib.request.urlopen(url, timeout=60) as response, partial.open('wb') as stream:
@@ -49,10 +51,15 @@ def download(url, target, expected):
 
 
 def install_ffmpeg(manifest):
-    archive = BASE / 'downloads/ffmpeg-7.1.1.zip'
-    download(manifest['ffmpeg_url'], archive, manifest['ffmpeg_sha256'])
     bindir = BASE / 'tools/ffmpeg/bin'
     bindir.mkdir(parents=True, exist_ok=True)
+    expected = manifest.get('ffmpeg_binaries_sha256', {})
+    if expected and all((bindir/name).is_file() and digest(bindir/name)==expected.get(name)
+                        for name in ('ffmpeg.exe','ffprobe.exe')):
+        os.environ['PATH'] = str(bindir) + os.pathsep + os.environ.get('PATH', '')
+        return
+    archive = BASE / 'downloads/ffmpeg-7.1.1.zip'
+    download(manifest['ffmpeg_url'], archive, manifest['ffmpeg_sha256'], manifest.get('offline_mode',False))
     # Extract only the two executables by basename; archive paths are never used.
     with zipfile.ZipFile(archive) as z:
         for name in ('ffmpeg.exe', 'ffprobe.exe'):
@@ -81,7 +88,7 @@ def preview(manifest):
     if digest(source) != manifest['sample_sha256']:
         raise ValueError('Sample integrity check failed.')
     models = BASE / 'models'
-    download(manifest['model_url'], models / MODEL, manifest['model_sha256'])
+    download(manifest['model_url'], models / MODEL, manifest['model_sha256'], manifest.get('offline_mode',False))
     if digest(models / MODEL.replace('.ckpt', '.yaml')) != manifest['config_sha256']:
         raise ValueError('Model configuration hash mismatch.')
     output = BASE / 'preview-results' / time.strftime('%Y%m%d-%H%M%S')
@@ -127,7 +134,20 @@ def preview(manifest):
             'outputs': records, 'review': 'Local output awaits listening; no batch or training started.'}
 
 
-def main():
+def offline_arguments():
+    lock = json.loads((BASE / 'offline-wheels.json').read_text(encoding='utf-8'))
+    for wheel in lock['wheels']:
+        name = wheel['filename']
+        if Path(name).name != name or '/' in name or '\\' in name:
+            raise ValueError('Invalid wheel path in offline manifest.')
+        path = BASE / 'wheelhouse' / name
+        if not path.is_file() or digest(path) != wheel['sha256']:
+            raise ValueError(f'Offline dependency missing or damaged: {name}')
+    print(f"Verified {len(lock['wheels'])} offline packages.", flush=True)
+    return ['--no-index', '--find-links', str(BASE / 'wheelhouse'), '-r', str(BASE / 'offline-requirements.txt')]
+
+
+def main(install_only=False):
     os.chdir(BASE)
     report = {'status': 'running', 'stage': 'environment', 'model_inference_tested': False,
               'model_inference_passed': False}
@@ -141,30 +161,42 @@ def main():
                 raise RuntimeError(f'Expected the previously validated {name} {expected}.')
         manifest = json.loads((BASE / 'download-manifest.json').read_text(encoding='utf-8'))
         report['stage'] = 'install_dependencies'
-        print('[1/3] Installing separation dependencies. Download progress is visible below.', flush=True)
+        print('[1/3] Installing separation dependencies.', flush=True)
+        requirements = (offline_arguments() if manifest.get('offline_mode') else
+                        ['--index-url', 'https://pypi.org/simple',
+                         'audio-separator[gpu]==0.47.1', 'audioread==3.1.0', 'onnxruntime-gpu==1.23.2'])
         subprocess.run([sys.executable, '-m', 'pip', '--log', str(BASE / 'backend-pip-log.txt'),
                         'install', '--disable-pip-version-check', '--only-binary=:all:',
                         '--progress-bar', 'on', '--timeout', '60', '--retries', '3',
-                        '--index-url', 'https://pypi.org/simple',
-                        '-c', str(BASE / 'constraints.txt'),
-                        'audio-separator[gpu]==0.47.1', 'audioread==3.1.0', 'onnxruntime-gpu==1.23.2'], check=True)
+                        '-c', str(BASE / 'constraints.txt')] + requirements, check=True)
         subprocess.run([sys.executable, '-m', 'pip', 'check'], check=True)
         report['stage'] = 'ffmpeg'
         print('[2/3] Preparing FFmpeg locally; system PATH is not modified.', flush=True)
         install_ffmpeg(manifest)
-        report['stage'] = 'model_preview'
-        print('[3/3] Downloading model if needed, then running the 10-second CUDA preview.', flush=True)
-        report.update(preview(manifest))
-        report['status'] = 'passed'
-        print('Preview passed. Send backend-check-report.json and listen to Vocals.mp3.', flush=True)
+        if install_only:
+            report['stage'] = 'model_files'
+            download(manifest['model_url'], BASE/'models'/MODEL, manifest['model_sha256'], manifest.get('offline_mode',False))
+            if digest(BASE/'models'/MODEL.replace('.ckpt','.yaml')) != manifest['config_sha256']:
+                raise ValueError('Model configuration hash mismatch.')
+            report['status'] = 'prepared'
+            print('Components prepared. Return to the app to import and separate your own audio.', flush=True)
+        else:
+            report['stage'] = 'model_preview'
+            print('[3/3] Downloading model if needed, then running the 10-second CUDA preview.', flush=True)
+            report.update(preview(manifest))
+            report['status'] = 'passed'
+            print('Preview passed. Send backend-check-report.json and listen to Vocals.mp3.', flush=True)
     except Exception as exc:
         report.update(status='failed', error=str(exc), traceback=traceback.format_exc())
         traceback.print_exc()
         print('Send backend-check-report.json; for install errors also send backend-pip-log.txt.', flush=True)
     finally:
         report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding='utf-8')
-    return 0 if report['status'] == 'passed' else 1
+    return 0 if report['status'] in ('passed', 'prepared') else 1
 
 
 if __name__ == '__main__':
-    sys.exit(main())
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--install-only', action='store_true')
+    sys.exit(main(parser.parse_args().install_only))

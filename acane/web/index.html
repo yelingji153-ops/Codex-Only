@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>ACAね · 人声分离工作台</title><link rel="stylesheet" href="/style.css"><script src="/app.js" defer></script></head>
+<body>
+<header><div class="brand"><span class="brand-mark">A</span><div><strong>ACAね</strong><span class="brand-sub">人声分离工作台</span></div></div><nav><button id="tab-process" class="tab active">导入与分离</button><button id="tab-review" class="tab">对比试听</button></nav><span class="local-label"><i></i> 本地资料库</span><button id="refresh" class="quiet">刷新列表</button></header>
+<div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
+<section id="process-view" class="process-view">
+<div class="workflow-heading"><div><div class="eyebrow">YOUR VOICE WORKSPACE</div><h1>从原录音，到干净人声</h1><p>导入文件，开始分离，对比试听后保留满意的结果。</p></div><span class="workflow-steps">01 导入　→　02 分离　→　03 试听</span></div>
+<section class="panel environment-panel"><div><h3 id="environment-title">正在读取运行环境…</h3><p id="environment-detail" class="hint">使用本机显卡处理，原件单独保留。</p></div><div class="actions"><button id="check-environment" class="quiet">检查环境</button><button id="prepare-environment" class="secondary">准备运行组件</button></div></section>
+<section id="drop-zone" class="drop-zone"><span class="upload-icon">＋</span><h2>把原音频拖到这里</h2><p>支持 MP3、WAV、FLAC、M4A 和常见视频，可一次选择多个文件。压缩包请先解压。</p><button id="choose-files" class="primary">选择原音频</button><input id="file-picker" type="file" multiple accept="audio/*,video/*,.wav,.flac,.mp3,.m4a,.aac,.ogg,.opus,.wma,.mp4,.mkv,.mov,.avi,.webm" hidden><p id="upload-status" class="hint" role="status">导入后保存原始文件副本，不覆盖源文件。</p></section>
+<section class="panel"><div class="panel-title"><h3>我的素材 <span id="asset-count" class="count">0</span></h3><span>BS-RoFormer · 已通过短片试听的分离设置</span></div><div class="asset-toolbar"><label class="check-label"><input type="checkbox" id="select-all">全选</label><label class="check-label"><input type="checkbox" id="force-new">重新生成一个版本</label><button id="start-separation" class="primary" disabled>开始分离</button></div><div id="asset-list" class="asset-list"></div><p id="assets-empty" class="empty-small">还没有素材，先导入一份原音频。</p></section>
+<section class="panel"><div class="panel-title"><h3>处理进度</h3><span>按顺序处理；失败的素材可重新选择后重试。</span></div><div id="task-list"></div><p id="tasks-empty" class="hint">选择素材并点击“开始分离”，这里会显示进度。</p></section>
+<details class="panel technical"><summary>查看运行记录</summary><pre id="runtime-log">尚未开始处理。</pre></details>
+</section><div id="review-view" class="layout" hidden>
+<aside><div class="aside-heading"><div class="eyebrow">LIBRARY</div><h1>素材复核</h1><p>听清细节，再决定保留。</p></div>
+<div class="stats"><div><strong id="total">0</strong><span>处理结果</span></div><div><strong id="pending">0</strong><span>待复核</span></div><div><strong id="approved">0</strong><span>已通过</span></div></div>
+<label class="sr-only" for="search">搜索素材或模型</label><input id="search" type="search" placeholder="搜索素材或模型…">
+<label class="sr-only" for="filter">审核状态筛选</label><select id="filter"><option value="all">全部结果</option><option value="pending">待复核</option><option value="approved">已通过</option><option value="redo">需要重做</option><option value="rejected">已拒绝</option></select>
+<div id="queue" class="queue" aria-label="处理结果列表"></div><p id="list-empty" class="empty-small" hidden>没有符合条件的结果。</p></aside>
+<main><section id="empty" class="empty"><span class="empty-icon">♫</span><h2>选择一份处理结果</h2><p>在左侧选择音轨，对比原录音与处理后的声音。<br>分离完成的结果会出现在这里。</p></section>
+<section id="detail" hidden>
+<div class="detail-top"><span class="eyebrow">LISTEN & REVIEW</span><span id="decision-badge" class="badge">待复核</span></div>
+<h2 id="filename"></h2><div class="meta"><span id="model"></span><span id="duration"></span><span id="sample-label"></span></div>
+<div id="integrity" class="integrity" hidden></div>
+<section class="panel listening"><div class="panel-title"><h3>对比试听</h3><span>留意伴奏残留、气声、高音与尾音</span></div>
+<div class="player"><div class="player-label"><span class="letter">A</span><div><strong>原录音</strong><small id="original-offset">保留原始录音</small></div><a id="download-original" href="#">下载原文件</a></div><audio id="original" controls preload="metadata"></audio><button id="switch-original" class="quiet">在相同位置听原录音</button></div>
+<div class="player result-player"><div class="player-label"><span class="letter">B</span><div><strong>当前处理结果</strong><small id="output-name"></small></div><a id="download-result" href="#">下载音轨</a></div><audio id="result" controls preload="metadata"></audio><button id="switch-result" class="quiet">在相同位置听处理结果</button></div>
+<p class="hint">切换试听会暂停另一条音轨；播放音量由播放器控制，不改变保存的音频。</p></section>
+<section class="panel"><div class="panel-title"><h3>记录审核决定</h3><span>只作用于当前这份结果</span></div>
+<label for="role">这是什么音轨？</label><select id="role"><option value="unknown">请选择音轨类型</option><option value="vocals">人声</option><option value="instrumental">伴奏</option><option value="other">其他</option></select>
+<label for="note">试听备注</label><textarea id="note" rows="3" maxlength="8000" placeholder="例如：吉他残留明显；高音完整；尾音需要再听一次…"></textarea>
+<div class="actions"><button id="approve" class="primary">确认保留</button><button id="redo" class="secondary">需要重做</button><button id="reject" class="quiet">拒绝</button><button id="reset" class="text-button">恢复待复核</button></div><p class="hint">通过前请明确音轨类型。满意的结果可通过上方“下载音轨”保存；新版本需要重新试听。</p></section>
+<div class="bottom-row"><section class="panel history-panel"><div class="panel-title"><h3>审核历史</h3></div><ol id="history"></ol><p id="history-empty" class="hint">还没有审核记录。</p></section><section class="panel export-panel" hidden><div class="eyebrow">DATASET</div><h3>保存为数据集</h3><p>将通过的人声另存为 WAV，保留来源、参数和审核记录。</p><button id="open-export" class="secondary">导出人声…</button><p id="export-status" class="hint" role="status"></p></section></div>
+<details class="panel technical"><summary>查看处理参数与记录</summary><pre id="parameters"></pre></details>
+</section></main></div>
+<dialog id="export-dialog"><form id="export-form"><h2>导出已通过的人声</h2><p class="hint">每次导出都会创建独立版本，不修改原件。</p><label for="export-scope">选择范围</label><select id="export-scope"><option value="current">当前处理任务</option><option value="all">全部通过的人声</option></select><label for="export-rate">采样率</label><select id="export-rate"><option value="">保持原采样率</option><option value="16000">16,000 Hz</option><option value="24000">24,000 Hz</option><option value="32000">32,000 Hz</option><option value="40000">40,000 Hz</option><option value="44100">44,100 Hz</option><option value="48000">48,000 Hz</option></select><label for="export-channels">声道</label><select id="export-channels"><option value="">保持原声道</option><option value="1">单声道</option><option value="2">双声道</option></select><p id="export-error" class="error-text" role="alert"></p><div class="actions"><button type="submit" class="primary" id="confirm-export">开始导出</button><button type="button" class="quiet" id="cancel-export">取消</button></div></form></dialog>
+</body></html>

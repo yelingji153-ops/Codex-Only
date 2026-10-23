@@ -17,6 +17,10 @@ def main(argv=None):
     commands.add_parser("doctor", help="检查基础音频工具")
     commands.add_parser("list", help="列出素材元数据")
     commands.add_parser("report", help="导出 CSV 报告")
+    interface = commands.add_parser("serve", help="启动本机浏览器试听与复核界面")
+    interface.add_argument("--port", type=int, default=8765, help="本机端口；0 表示自动分配")
+    interface.add_argument("--no-browser", action="store_true", help="只显示链接，不自动打开浏览器")
+    interface.add_argument("--backend-python", help="分离环境的 Python；默认使用程序旁的 .venv-separation")
     commands.add_parser("review-list", help="列出每份处理结果及其人工审核状态")
     history = commands.add_parser("review-history", help="查看不可覆盖的审核历史")
     history.add_argument("--job", help="只查看该任务")
@@ -46,6 +50,10 @@ def main(argv=None):
     separation.add_argument("--force", action="store_true", help="保留旧结果并生成新的处理版本")
     args = parser.parse_args(argv)
     try:
+        if args.command == "serve":
+            from .webapp import serve
+            serve(args.library, args.port, not args.no_browser, args.backend_python)
+            return 0
         if args.command == "doctor":
             data = {name: shutil.which(name) for name in ("ffmpeg", "ffprobe")}
             data["python"] = sys.version.split()[0]

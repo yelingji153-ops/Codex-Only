@@ -196,7 +196,8 @@ class Library(ReviewMixin):
                                      value.lstrip().startswith(("=", "+", "-", "@")) else value for value in row])
         return directory
 
-    def separate(self, asset_id, model, python=sys.executable, timeout=3600, force=False, mdxc_params=None):
+    def separate(self, asset_id, model, python=sys.executable, timeout=3600, force=False, mdxc_params=None,
+                 require_cuda=False):
         if not model or Path(model).name != model or any(c in model for c in ("/", "\\", ":")):
             raise ValueError("模型必须是后端模型目录中的文件名，不能包含路径。")
         if timeout <= 0:
@@ -228,6 +229,8 @@ class Library(ReviewMixin):
                     "input": "first-audio-stream-float32"}
         if mdxc_params:
             settings["mdxc_params"] = mdxc_params
+        if require_cuda:
+            settings['device_requirement'] = 'cuda'
         parameters = json.dumps(settings, sort_keys=True)
         if not force:
             rows = self.db.execute("""SELECT * FROM jobs WHERE asset_id=? AND parameters=?
@@ -253,8 +256,13 @@ class Library(ReviewMixin):
             if mdxc_params:
                 command.append(json.dumps(mdxc_params, sort_keys=True))
             with (directory / "backend.log").open("w", encoding="utf-8") as log:
+                environment = dict(os.environ)
+                if require_cuda:
+                    environment['ACANE_REQUIRE_CUDA'] = '1'
+                else:
+                    environment.pop('ACANE_REQUIRE_CUDA', None)
                 result = subprocess.run(command,
-                                        stdout=log, stderr=subprocess.STDOUT, timeout=timeout)
+                                        stdout=log, stderr=subprocess.STDOUT, timeout=timeout, env=environment)
             if result.returncode:
                 raise MediaError(f"分离失败，退出码 {result.returncode}；查看 {directory / 'backend.log'}")
             paths = json.loads(manifest.read_text(encoding="utf-8"))

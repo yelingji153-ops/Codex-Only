@@ -18,3 +18,6 @@ acane = "acane.cli:main"
 
 [tool.setuptools.packages.find]
 include = ["acane*"]
+
+[tool.setuptools.package-data]
+acane = ["web/*.html", "web/*.css", "web/*.js"]

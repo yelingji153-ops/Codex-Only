@@ -12,6 +12,11 @@ from .media import MediaError, digest, probe
 DECISIONS = ('pending', 'approved', 'redo', 'rejected')
 ROLES = ('unknown', 'vocals', 'instrumental', 'other')
 SAMPLE_RATES = (16000, 24000, 32000, 40000, 44100, 48000)
+_ANY_SEQUENCE = object()
+
+
+class ReviewConflict(ValueError):
+    """A browser is trying to save a review of an outdated output or decision."""
 
 
 def timestamp():
@@ -45,7 +50,8 @@ class ReviewMixin:
             (job_id, output['path'], output['sha256'])).fetchone()
         return dict(row) if row else {'sequence': None, 'decision': 'pending', 'role': 'unknown', 'note': ''}
 
-    def review_output(self, job_id, output_path, decision, role='unknown', note=''):
+    def review_output(self, job_id, output_path, decision, role='unknown', note='',
+                      expected_sequence=_ANY_SEQUENCE, expected_sha256=None):
         if decision not in DECISIONS or role not in ROLES:
             raise ValueError('未知审核状态或音轨类型。')
         if decision == 'approved' and role == 'unknown':
@@ -53,6 +59,10 @@ class ReviewMixin:
         with self.db:
             self.db.execute('BEGIN IMMEDIATE')
             job, output = self._review_target(job_id, output_path)
+            current = self._latest_review(job_id, output)
+            if ((expected_sequence is not _ANY_SEQUENCE and expected_sequence != current['sequence'])
+                    or (expected_sha256 is not None and expected_sha256 != output['sha256'])):
+                raise ReviewConflict('这份结果或审核记录已更新，请刷新后重新试听并确认。')
             if decision == 'approved':
                 asset = self.asset(job['asset_id'])
                 self._verified_path(asset['original_path'], asset['id'])
