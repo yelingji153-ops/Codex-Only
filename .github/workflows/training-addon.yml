@@ -20,5 +20,5 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
-          test "$(gh release view acane-training-v0.1.1-preview --json isDraft --jq .isDraft)" = true
-          gh release upload acane-training-v0.1.1-preview "$RUNNER_TEMP/ACAne-Training-Addon.zip" "$RUNNER_TEMP/ACAne-Training-Addon.zip.sha256" --clobber
+          test "$(gh release view acane-training-v0.1.2-preview --json isDraft --jq .isDraft)" = true
+          gh release upload acane-training-v0.1.2-preview "$RUNNER_TEMP/ACAne-Training-Addon.zip" "$RUNNER_TEMP/ACAne-Training-Addon.zip.sha256" --clobber
