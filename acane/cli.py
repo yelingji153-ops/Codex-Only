@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 
 from .library import KINDS, Library
+from .review import DECISIONS, ROLES, SAMPLE_RATES
 
 
 def main(argv=None):
@@ -16,6 +17,19 @@ def main(argv=None):
     commands.add_parser("doctor", help="检查基础音频工具")
     commands.add_parser("list", help="列出素材元数据")
     commands.add_parser("report", help="导出 CSV 报告")
+    commands.add_parser("review-list", help="列出每份处理结果及其人工审核状态")
+    history = commands.add_parser("review-history", help="查看不可覆盖的审核历史")
+    history.add_argument("--job", help="只查看该任务")
+    review = commands.add_parser("review", help="人工记录具体输出的审核决定")
+    review.add_argument("--job", required=True, help="任务 ID")
+    review.add_argument("--output", required=True, help="review-list 中的完整相对输出路径")
+    review.add_argument("--decision", choices=DECISIONS, required=True)
+    review.add_argument("--role", choices=ROLES, default="unknown", help="通过前必须明确音轨类型")
+    review.add_argument("--note", default="", help="试听评价和修改原因")
+    exporter = commands.add_parser("export", help="只导出明确通过的人声，创建独立版本的 WAV 数据集")
+    exporter.add_argument("--job", action="append", help="选择任务；可重复指定，默认所有通过的人声")
+    exporter.add_argument("--sample-rate", type=int, choices=SAMPLE_RATES, help="不指定则保持各音轨采样率")
+    exporter.add_argument("--channels", type=int, choices=(1, 2), help="不指定则保持各音轨声道数")
     importer = commands.add_parser("import", help="导入文件或目录，保存原件副本")
     importer.add_argument("paths", nargs="+", type=Path)
     importer.add_argument("--kind", choices=KINDS, default="unknown")
@@ -45,6 +59,16 @@ def main(argv=None):
                 data, failed = library.assets(), False
             elif args.command == "report":
                 data, failed = {"report_dir": str(library.report())}, False
+            elif args.command == "review-list":
+                data, failed = library.review_queue(), False
+            elif args.command == "review-history":
+                data, failed = library.review_history(args.job), False
+            elif args.command == "review":
+                data = library.review_output(args.job, args.output, args.decision, args.role, args.note)
+                failed = False
+            elif args.command == "export":
+                data = library.export_dataset(args.job, args.sample_rate, args.channels)
+                failed = False
             else:
                 mdxc_params = None
                 if args.segment_size is not None or args.overlap is not None:

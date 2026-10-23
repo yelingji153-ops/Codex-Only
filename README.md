@@ -5,7 +5,7 @@ Windows 本地 AI 翻唱项目。当前版本 **0.1：第一阶段素材预处�
 
 当前支持批量导入、只读探测音频、原件副本归档、SHA-256 完全去重、SQLite 来源记录、
 CSV 报告，以及独立进程中的可选人声分离后端。所有素材初始状态都是 `pending`。
-目前是供开发和验证的命令行版本；图形界面、人工复核与训练集导出尚未实现。
+目前是供开发和验证的命令行版本；支持逐份结果的人工审核和已通过人声的 WAV 导出，图形界面尚未实现。
 
 ## 基础运行
 
@@ -83,6 +83,39 @@ Windows 使用分离环境的 `.venv-separation\Scripts\python.exe` 作为 `--py
 11 分钟整批粗估约 2–3 小时，实际随素材和负载变化。RTX 5070 实测速度尚未知。
 短片试听通过不等于整批训练素材已通过；完整结果仍需逐条复核。
 
+## 人工复核与版本化导出
+
+先试听具体输出，再记录决定；审核绑定任务、输出路径和文件 SHA-256，
+不会自动转移到重做结果或另一模型。素材表的 `review` 是旧版原件占位字段，
+处理结果的审核状态以 `review-list` / `review-history` 为准。
+
+```sh
+python -m acane --library workspace-data review-list
+python -m acane --library workspace-data review --job <任务ID> --output "<列表中的相对输出路径>" --decision approved --role vocals --note "逐段试听通过"
+python -m acane --library workspace-data review-history --job <任务ID>
+python -m acane --library workspace-data export --job <任务ID>
+```
+
+状态：`pending` 待复核、`approved` 通过、`redo` 需要重做、`rejected` 拒绝。
+通过时必须指定音轨类型：`vocals` 人声、`instrumental` 伴奏、`other` 其他。
+每次修改都追加历史，不覆盖旧决定；可以用新的待复核、重做或拒绝决定撤销通过。
+如果文件缺失或哈希变化，程序拒绝批准或导出，但仍可记录拒绝原因。
+
+导出只选取当前明确通过的 `vocals`。`--job` 可重复指定；不指定则选择所有通过的人声。
+同一原件的多个通过版本或完全重复的人声不会一起自动导出，需先明确选择。
+没有合格结果、指定任务未通过或转码失败时，不生成完成的数据集目录。
+
+输出在 `资料库/datasets/<唯一版本ID>/`，WAV 为 32 位浮点 PCM。
+默认保留每份结果的采样率和声道数；可指定 `--sample-rate 24000 --channels 1`，
+采样率可选 16000、24000、32000、40000、44100、48000 Hz，声道可选 1 或 2。
+导出整段结果，不自动切分、均衡、降噪或调整音量。
+`manifest.json` 保存原件哈希、来源、模型参数、审核记录、转换设置和输出哈希。
+每次导出创建独立版本；撤销通过会影响后续导出，不自动删除过去的数据集快照。
+
+首次打开旧版资料库时，会先在 `reports/schema-v1-*.sqlite3` 备份数据库，再升级到 v2。
+请用新版程序打开升级后的资料库；音频原件和既有结果不因升级而修改。
+这组功能已做云端 FFmpeg 流程验证；Windows 本机导出与图形界面仍待验证。
+
 ## 文件与跨电脑交接
 
 ```text
@@ -92,6 +125,7 @@ Windows 使用分离环境的 `.venv-separation\Scripts\python.exe` 作为 `--py
   preprocessing/<任务ID>/ # 工作副本、分离结果、输出清单、日志
   reports/              # 每次导入结果及独立版本的 CSV 报告
   models/               # 分离模型缓存
+  datasets/<版本ID>/     # 明确通过的人声 WAV 与来源/审核清单
 ```
 
 原始输入文件不修改、不删除；资料库原件也不会被处理结果覆盖。

@@ -13,6 +13,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from .media import MediaError, digest, extract_audio, probe
+from .review import ReviewMixin
 
 EXTENSIONS = {".wav", ".flac", ".mp3", ".m4a", ".aac", ".ogg", ".opus",
               ".wma", ".mp4", ".mkv", ".mov", ".avi", ".webm"}
@@ -23,7 +24,7 @@ def now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-class Library:
+class Library(ReviewMixin):
     def __init__(self, root: Path):
         self.root = root.expanduser().resolve()
         self.root.mkdir(parents=True, exist_ok=True)
@@ -33,9 +34,13 @@ class Library:
         self.db.row_factory = sqlite3.Row
         self.db.execute("PRAGMA foreign_keys=ON")
         version = self.db.execute("PRAGMA user_version").fetchone()[0]
-        if version not in (0, 1):
+        if version not in (0, 1, 2):
             self.db.close()
             raise ValueError(f"不支持数据库版本 {version}，请使用匹配的软件版本。")
+        if version == 1:
+            backup = self.root / "reports" / f"schema-v1-{uuid.uuid4().hex}.sqlite3"
+            with sqlite3.connect(backup) as destination:
+                self.db.backup(destination)
         self.db.executescript("""
             CREATE TABLE IF NOT EXISTS assets (
                 id TEXT PRIMARY KEY, original_path TEXT NOT NULL UNIQUE,
@@ -55,7 +60,17 @@ class Library:
                 operation TEXT NOT NULL, parameters TEXT NOT NULL, status TEXT NOT NULL,
                 started_at TEXT NOT NULL, finished_at TEXT, outputs TEXT, error TEXT
             );
-            PRAGMA user_version=1;
+            CREATE TABLE IF NOT EXISTS output_reviews (
+                sequence INTEGER PRIMARY KEY AUTOINCREMENT,
+                job_id TEXT NOT NULL REFERENCES jobs(id), output_path TEXT NOT NULL,
+                output_sha256 TEXT NOT NULL,
+                decision TEXT NOT NULL CHECK(decision IN ('pending','approved','redo','rejected')),
+                role TEXT NOT NULL CHECK(role IN ('unknown','vocals','instrumental','other')),
+                note TEXT NOT NULL, created_at TEXT NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS reviews_output ON output_reviews
+                (job_id, output_path, output_sha256, sequence);
+            PRAGMA user_version=2;
         """)
 
     def __enter__(self):
@@ -168,6 +183,7 @@ class Library:
                 (SELECT asset_id FROM sources GROUP BY asset_id HAVING COUNT(DISTINCT path)>1)
                 ORDER BY asset_id, path""",
             "jobs": "SELECT * FROM jobs ORDER BY started_at",
+            "output_reviews": "SELECT * FROM output_reviews ORDER BY sequence",
         }
         for name, query in queries.items():
             cursor = self.db.execute(query)
