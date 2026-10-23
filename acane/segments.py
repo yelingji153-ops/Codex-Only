@@ -88,6 +88,8 @@ def analyze(source, scratch, options):
 
 
 def suggest(metrics, options):
+    if metrics['quiet_window_ratio'] == 1:
+        return []
     duration, padding = metrics['duration_s'], options['padding_s']
     spans, cursor = [], 0.0
     for start, end in metrics['silence_intervals']:

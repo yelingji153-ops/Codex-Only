@@ -88,6 +88,8 @@ class SegmentsTest(unittest.TestCase):
         self.assertIsNone(plan['metrics']['rms_dbfs'])
         self.assertEqual(plan['segments'],[])
         with self.assertRaises(ValueError):self.library.render_segments(plan['id'])
+        self.make_source(array('h',[0]*800));self.approve()
+        self.assertEqual(self.plan()['segments'],[])
         self.make_source(array('h',[32767]*8000));self.approve()
         self.assertEqual(self.plan()['metrics']['near_full_scale_ratio'],1)
 
