@@ -55,17 +55,18 @@ def download(url, target, expected=None):
             print('连接中断，正在重试。', flush=True)
 
 
-def run(command, log, cwd=ROOT, env=None):
+def run(command, log, cwd=ROOT, env=None, interactive=False):
     print('执行：', ' '.join(map(str, command)), flush=True)
     with log.open('a', encoding='utf-8') as stream:
         stream.write('\nCOMMAND: '+repr(list(map(str, command)))+'\n')
-        with subprocess.Popen(list(map(str, command)), cwd=cwd, env=env, stdout=subprocess.PIPE,
+        with subprocess.Popen(list(map(str, command)), cwd=cwd, env=env, stdout=None if interactive else subprocess.PIPE,
                               stderr=subprocess.STDOUT, text=True, encoding='utf-8', errors='replace') as proc:
             try:
-                for line in proc.stdout:
-                    print(line, end='', flush=True)
-                    stream.write(line)
-                    stream.flush()
+                if not interactive:
+                    for line in proc.stdout:
+                        print(line, end='', flush=True)
+                        stream.write(line)
+                        stream.flush()
                 if proc.wait():
                     raise RuntimeError(f'步骤失败，详见 {log}')
             except BaseException:
@@ -112,11 +113,12 @@ def setup(log):
     marker = ROOT/'.venv-training'/'acane-ready.json'
     if not marker.exists():
         print('首次安装独立训练组件，需要下载数 GB。分离环境保持原样。', flush=True)
-        pip = [python, '-m', 'pip', 'install', '--timeout', '90', '--retries', '5']
-        run(pip+['torch==2.11.0+cu128', 'torchaudio==2.11.0+cu128', '--index-url', 'https://download.pytorch.org/whl/cu128'], log)
+        pip = [python, '-m', 'pip', '--log', ROOT/'training-pip-log.txt',
+               'install', '--progress-bar', 'on', '--timeout', '90', '--retries', '5']
+        run(pip+['torch==2.11.0+cu128', 'torchaudio==2.11.0+cu128', '--index-url', 'https://download.pytorch.org/whl/cu128'], log, interactive=True)
         constraints = ROOT/'training-addon'/'constraints.txt'
         constraints.write_text('torch==2.11.0+cu128\ntorchaudio==2.11.0+cu128\n', encoding='utf-8')
-        run(pip+['-r', backend/'requirements-engine.txt', '-c', constraints], log)
+        run(pip+['-r', backend/'requirements-engine.txt', '-c', constraints], log, interactive=True)
         run([python, '-m', 'pip', 'check'], log)
         save(marker, {'backend_commit': COMMIT})
     return python, backend
@@ -221,5 +223,5 @@ if __name__ == '__main__':
         print(message, flush=True)
         with (ROOT/'training-log.txt').open('a', encoding='utf-8') as stream:
             stream.write(message)
-        print('训练未完成。请发送 training-log.txt；修复后重新双击可继续已有快照。', flush=True)
+        print('训练未完成。请发送 training-log.txt 和 training-pip-log.txt；修复后重新双击可继续已有快照。', flush=True)
         sys.exit(1)

@@ -11,8 +11,9 @@ def build(output):
     output.parent.mkdir(parents=True, exist_ok=True)
     files = [(p, 'training-addon/'+str(p.relative_to(ROOT))) for p in sorted((ROOT/'acane').glob('*.py'))]
     files += [(ROOT/'scripts/windows_training'/name, 'training-addon/'+name)
-              for name in ('start_training.py', 'verify_training.py', 'prepare_audio.py')]
+              for name in ('start_training.py', 'verify_training.py', 'prepare_audio.py', 'download_progress.ps1')]
     files += [(ROOT/'scripts/windows_training/Start_Training.cmd', 'Start_Training.cmd'),
+              (ROOT/'scripts/windows_training/Show_Download_Progress.cmd', 'Show_Download_Progress.cmd'),
               (ROOT/'docs/local-training.md', '训练使用说明.md')]
     with zipfile.ZipFile(output, 'w', zipfile.ZIP_DEFLATED) as bundle:
         for source, name in files:
