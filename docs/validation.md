@@ -126,3 +126,10 @@ CLI 流程及非法路径拒绝。实际执行 WAV 转码，核对采样率、�
 FFmpeg 7.1.1、BS-RoFormer 权重/配置及最终 ZIP 校验通过。
 这证明归档完整性，不证明 Windows 安装或 RTX 5070 模型推理成功。
 实际用户素材没有新增审核通过，也没有开始训练。
+
+
+## 发布输入下载验证
+
+新增下载器用本地文件源验证精确字节、已校验缓存复用和损坏内容阻断。
+公开输入固定在 offline-wheels.json 与 download-manifest.json；实际构建结果以 GitHub Actions 记录为准。
+此流程只打包发布，不增加 Windows/GPU 实机验证结论。

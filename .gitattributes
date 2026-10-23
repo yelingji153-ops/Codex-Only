@@ -1,1 +1,4 @@
 Start_ACAne.cmd text eol=crlf
+
+# Preserve checksum-pinned upstream model configuration bytes.
+scripts/windows_backend/model-config/* -text -whitespace

@@ -1,0 +1,39 @@
+name: Build Windows offline bundle
+on:
+  push:
+    branches: [codex/acane-preprocessing]
+    paths:
+      - .github/workflows/windows-bundle.yml
+      - scripts/fetch_windows_payload.py
+      - scripts/windows_backend/offline-wheels.json
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: windows-offline-preview
+  cancel-in-progress: false
+
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Fetch checksum-pinned release inputs
+        run: python scripts/fetch_windows_payload.py "$RUNNER_TEMP/acane-inputs"
+      - name: Build and verify archive
+        run: |
+          python scripts/build_windows_app.py --payload "$RUNNER_TEMP/acane-inputs/payload" --models "$RUNNER_TEMP/acane-inputs/models" --ffmpeg "$RUNNER_TEMP/acane-inputs/ffmpeg.zip" --output "$RUNNER_TEMP/ACAne-Vocal-Workbench.zip"
+          cd "$RUNNER_TEMP"
+          sha256sum ACAne-Vocal-Workbench.zip > ACAne-Vocal-Workbench.zip.sha256
+      - name: Upload to prepared draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh release upload acane-workbench-v0.1.0-preview "$RUNNER_TEMP/ACAne-Vocal-Workbench.zip" "$RUNNER_TEMP/ACAne-Vocal-Workbench.zip.sha256" "$RUNNER_TEMP/ACAne-Vocal-Workbench.json" --clobber
