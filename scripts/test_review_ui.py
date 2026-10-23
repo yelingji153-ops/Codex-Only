@@ -73,6 +73,26 @@ def main():
                 assert page.locator('#history img').count()==0
                 stale.locator('#reject').click()
                 expect(stale.locator('#notice')).to_contain_text('已更新')
+                expect(page.locator('#segments-panel')).to_be_visible()
+                page.locator('#analyze-segments').click()
+                expect(page.locator('.segment-row')).to_have_count(1,timeout=20000)
+                page.locator('.segment-start').fill('0.25')
+                page.locator('.segment-end').fill('1.25')
+                page.locator('.segment-row button').click()
+                expect(page.locator('#result')).to_have_js_property('paused',False)
+                page.evaluate("document.querySelector('#result').currentTime=1.3;document.querySelector('#result').dispatchEvent(new Event('timeupdate'))")
+                expect(page.locator('#result')).to_have_js_property('paused',True)
+                page.locator('#render-segments').click()
+                expect(page.locator('#segment-status')).to_contain_text('已保存 1 段待复核 WAV',timeout=20000)
+                manifests=list((root/'library/segments').glob('*/manifest.json'))
+                assert len(manifests)==1
+                manifest=json.loads(manifests[0].read_text())
+                assert manifest['files'][0]['metadata']['duration']==1
+                assert manifest['files'][0]['original_start_s']==1.25
+                assert not manifest['training_eligible']
+                page.set_viewport_size({'width':390,'height':844})
+                assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
+                page.set_viewport_size({'width':1360,'height':1000})
                 page.locator('#filter').select_option('approved')
                 expect(page.locator('.queue-item')).to_have_count(1)
                 page.locator('#search').fill('no-match-123')
@@ -87,7 +107,7 @@ def main():
                 assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
                 assert not errors,errors
                 browser.close()
-            print('Browser checks passed: file upload and deduplication; audio decode and offset switch; review persistence; literal notes; stale tab conflict; filters; reload; both mobile views.')
+            print('Browser checks passed: upload/deduplication; audio decode and offset switch; review persistence; literal notes; stale tab conflict; segment analysis, edited boundaries, bounded preview and WAV drafts; filters; reload; mobile views.')
         finally:
             server.shutdown();server.server_close();thread.join()
 

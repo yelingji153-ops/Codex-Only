@@ -36,4 +36,5 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
-          gh release upload acane-workbench-v0.1.0-preview "$RUNNER_TEMP/ACAne-Vocal-Workbench.zip" "$RUNNER_TEMP/ACAne-Vocal-Workbench.zip.sha256" "$RUNNER_TEMP/ACAne-Vocal-Workbench.json" --clobber
+          test "$(gh release view acane-workbench-v0.2.0-preview --json isDraft --jq .isDraft)" = true
+          gh release upload acane-workbench-v0.2.0-preview "$RUNNER_TEMP/ACAne-Vocal-Workbench.zip" "$RUNNER_TEMP/ACAne-Vocal-Workbench.zip.sha256" "$RUNNER_TEMP/ACAne-Vocal-Workbench.json" --clobber

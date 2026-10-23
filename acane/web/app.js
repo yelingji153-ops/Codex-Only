@@ -3,11 +3,12 @@ const $ = id => document.getElementById(id);
 const labels = {pending:'待复核', approved:'已通过', redo:'需要重做', rejected:'已拒绝'};
 const roles = {unknown:'未分类', vocals:'人声', instrumental:'伴奏', other:'其他'};
 let items = [], current = null, busy = false, loadVersion = 0;
+let segmentPlan=null, segmentEdited=false, segmentStop=null;
 const identity = item => item.job_id + ':' + item.output.path;
 const formatTime = seconds => `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2,'0')}`;
 const modelName = item => (item.parameters.model || '未知模型').replace('model_bs_roformer_ep_317_sdr_12.9755.ckpt','BS-RoFormer · Viperx 1297').replace('UVR_MDXNET_KARA_2.onnx','MDX · KARA 2');
-function dirty() { return current && ($('note').value!==current.review.note || $('role').value!==current.review.role); }
-function leaveDraft() { return !dirty() || window.confirm('当前音轨的备注或类型尚未保存，确定放弃这些修改吗？'); }
+function dirty() { return segmentEdited || current && ($('note').value!==current.review.note || $('role').value!==current.review.role); }
+function leaveDraft() { return !dirty() || window.confirm('当前备注、类型或片段边界尚未保存，确定放弃这些修改吗？'); }
 window.addEventListener('beforeunload',event=>{if(dirty()||busy){event.preventDefault();event.returnValue='';}});
 function notice(message, error=false) { $('notice').textContent=message; $('notice').className='notice'+(error?' error':''); $('notice').hidden=!message; }
 async function request(path, data) {
@@ -16,7 +17,7 @@ async function request(path, data) {
   if (!response.ok) throw new Error(result.error || '请求失败，请重试。');
   return result;
 }
-function lock(value) { busy=value; for (const id of ['approve','redo','reject','reset','refresh','open-export']) $(id).disabled=value; renderList(); }
+function lock(value) { busy=value; for (const id of ['approve','redo','reject','reset','refresh','open-export','tab-process','tab-review','analyze-segments','render-segments']) $(id).disabled=value; renderList(); }
 function mediaUrl(item, kind) { return '/audio?' + new URLSearchParams({job:item.job_id,output:item.output.path,kind}); }
 function renderList() {
   $('total').textContent=items.length;
@@ -46,6 +47,9 @@ async function reload(preferred) {
 async function select(item) {
   if(current && identity(current)!==identity(item) && !leaveDraft())return;
   current=item; const version=++loadVersion;
+  segmentPlan=null;segmentEdited=false;segmentStop=null;
+  $('segments-panel').hidden=!(item.review.decision==='approved'&&item.review.role==='vocals');
+  $('segment-rows').replaceChildren();$('segment-metrics').textContent='';$('segment-status').textContent='';$('render-segments').hidden=true;
   $('original').pause(); $('result').pause();
   $('detail').hidden=false; $('empty').hidden=true; $('filename').textContent=item.source_filename;
   $('model').textContent=modelName(item); $('duration').textContent=formatTime(item.output.duration)+' · '+(item.output.sample_rate/1000)+' kHz · '+item.output.channels+' 声道';
@@ -76,6 +80,7 @@ async function select(item) {
 }
 async function save(decision) {
   if(!current||busy)return;
+  if(segmentEdited&&!leaveDraft())return;
   if(decision==='approved'&&$('role').value==='unknown'){notice('请先选择音轨类型，再确认通过。',true);$('role').focus();return;}
   lock(true);const item=current;
   try {
@@ -201,3 +206,53 @@ for(const event of ['dragenter','dragover'])$('drop-zone').addEventListener(even
 for(const event of ['dragleave','drop'])$('drop-zone').addEventListener(event,e=>{e.preventDefault();$('drop-zone').classList.remove('dragging');});
 $('drop-zone').addEventListener('drop',e=>upload([...e.dataTransfer.files]));
 setInterval(pollWorkbench,2500);
+
+// Dataset preparation operates on explicitly approved vocals, never automatically.
+$('result').addEventListener('timeupdate',()=>{
+  if(segmentStop!==null&&$('result').currentTime>=segmentStop){$('result').pause();segmentStop=null;}
+});
+function segmentIntervals(){
+  return [...$('segment-rows').querySelectorAll('.segment-row')].filter(row=>row.querySelector('input[type=checkbox]').checked).map(row=>({start_s:Number(row.querySelector('.segment-start').value),end_s:Number(row.querySelector('.segment-end').value)}));
+}
+function drawSegments(plan){
+  const metrics=plan.metrics;
+  const level=x=>x===null?'静音':x.toFixed(1)+' dBFS';
+  $('segment-metrics').textContent=`平均电平 ${level(metrics.rms_dbfs)} · 峰值 ${level(metrics.peak_dbfs)} · 低音量窗口 ${(metrics.quiet_window_ratio*100).toFixed(1)}% · 接近满幅 ${(metrics.near_full_scale_ratio*100).toFixed(3)}%（仅风险提示，不代表已证实削波）`;
+  $('segment-rows').replaceChildren();
+  for(const [index,interval] of plan.segments.entries()){
+    const row=document.createElement('div');row.className='segment-row';
+    const selected=document.createElement('input');selected.type='checkbox';selected.checked=true;selected.setAttribute('aria-label',`保留片段 ${index+1}`);selected.onchange=()=>segmentEdited=true;row.append(selected);
+    for(const [key,label] of [['start_s','开始秒'],['end_s','结束秒']]){
+      const wrapper=document.createElement('label');wrapper.textContent=`${index+1} · ${label} `;
+      const input=document.createElement('input');input.type='number';input.min=0;input.max=metrics.duration_s;input.step='0.001';input.value=String(interval[key]);input.className=key==='start_s'?'segment-start':'segment-end';input.oninput=()=>segmentEdited=true;wrapper.append(input);row.append(wrapper);
+    }
+    const preview=document.createElement('button');preview.className='quiet';preview.textContent='试听片段';preview.onclick=async()=>{
+      const start=Number(row.querySelector('.segment-start').value),end=Number(row.querySelector('.segment-end').value);
+      if(!Number.isFinite(start)||!Number.isFinite(end)||start<0||end<=start||end>metrics.duration_s+.001){notice('请填写音轨范围内的开始和结束时间。',true);return;}
+      $('original').pause();$('result').currentTime=start;segmentStop=end;
+      try{await $('result').play();}catch(error){notice('音频尚未就绪，请稍后试听。',true);}
+    };row.append(preview);
+    if(interval.warnings.length){const warning=document.createElement('p');warning.className='segment-warning';warning.textContent=interval.warnings.join(' ');row.append(warning);}
+    $('segment-rows').append(row);
+  }
+  $('render-segments').hidden=!plan.segments.length;
+  $('segment-status').textContent=plan.segments.length?`已保存方案 ${plan.id}，建议 ${plan.segments.length} 段。可修改边界或取消勾选后保存。`:'未找到高于阈值的片段，请调整阈值并人工试听；原音轨保留。';
+}
+$('analyze-segments').onclick=async()=>{
+  if(!current||busy||!leaveDraft())return;
+  const item=current;lock(true);$('analyze-segments').disabled=true;$('segment-status').textContent='正在分析音轨，请稍候…';
+  try{
+    const plan=await request('/api/segment-plan',{job_id:item.job_id,output_path:item.output.path,options:{silence_db:Number($('segment-threshold').value),max_segment_s:Number($('segment-max').value)}});
+    if(current&&identity(current)===identity(item)){segmentPlan=plan;segmentEdited=false;drawSegments(plan);}
+  }catch(error){$('segment-status').textContent=error.message;}
+  finally{lock(false);$('analyze-segments').disabled=false;}
+};
+$('render-segments').onclick=async()=>{
+  if(!segmentPlan||busy)return;
+  lock(true);$('render-segments').disabled=true;
+  try{
+    const result=await request('/api/segment-render',{plan_id:segmentPlan.id,intervals:segmentIntervals()});
+    segmentEdited=false;$('segment-status').textContent=`已保存 ${result.count} 段待复核 WAV，未进入训练集。\n位置：${result.directory}`;
+  }catch(error){$('segment-status').textContent=error.message;}
+  finally{lock(false);$('render-segments').disabled=false;}
+};

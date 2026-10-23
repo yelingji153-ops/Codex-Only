@@ -30,6 +30,15 @@
 <label for="role">这是什么音轨？</label><select id="role"><option value="unknown">请选择音轨类型</option><option value="vocals">人声</option><option value="instrumental">伴奏</option><option value="other">其他</option></select>
 <label for="note">试听备注</label><textarea id="note" rows="3" maxlength="8000" placeholder="例如：吉他残留明显；高音完整；尾音需要再听一次…"></textarea>
 <div class="actions"><button id="approve" class="primary">确认保留</button><button id="redo" class="secondary">需要重做</button><button id="reject" class="quiet">拒绝</button><button id="reset" class="text-button">恢复待复核</button></div><p class="hint">通过前请明确音轨类型。满意的结果可通过上方“下载音轨”保存；新版本需要重新试听。</p></section>
+<section id="segments-panel" class="panel" hidden>
+<div class="panel-title"><h3>整理训练素材</h3><span>只分析已确认保留的人声</span></div>
+<p class="hint">检查低音量间隔和接近满幅的采样，生成切分建议。气声和尾音可能音量很低，请试听边界；片段仍需复核，不会自动进入训练集。</p>
+<div class="segment-options"><label>低音量阈值（dBFS）<input id="segment-threshold" type="number" value="-45" min="-90" max="-10"></label><label>建议最长片段（秒）<input id="segment-max" type="number" value="12" min="1" max="30" step="1"></label></div>
+<button id="analyze-segments" class="secondary">分析并建议切分</button>
+<p id="segment-status" class="hint" role="status"></p><div id="segment-metrics" class="hint"></div>
+<div id="segment-rows"></div><button id="render-segments" class="primary" hidden>保存所选片段草稿</button>
+<p class="hint">每次保存创建一个独立版本，保持采样率、声道和音量，不修改原音轨。</p>
+</section>
 <div class="bottom-row"><section class="panel history-panel"><div class="panel-title"><h3>审核历史</h3></div><ol id="history"></ol><p id="history-empty" class="hint">还没有审核记录。</p></section><section class="panel export-panel" hidden><div class="eyebrow">DATASET</div><h3>保存为数据集</h3><p>将通过的人声另存为 WAV，保留来源、参数和审核记录。</p><button id="open-export" class="secondary">导出人声…</button><p id="export-status" class="hint" role="status"></p></section></div>
 <details class="panel technical"><summary>查看处理参数与记录</summary><pre id="parameters"></pre></details>
 </section></main></div>

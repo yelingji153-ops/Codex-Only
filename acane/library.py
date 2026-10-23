@@ -14,6 +14,7 @@ from pathlib import Path
 
 from .media import MediaError, digest, extract_audio, probe
 from .review import ReviewMixin
+from .segments import SegmentsMixin
 
 EXTENSIONS = {".wav", ".flac", ".mp3", ".m4a", ".aac", ".ogg", ".opus",
               ".wma", ".mp4", ".mkv", ".mov", ".avi", ".webm"}
@@ -24,7 +25,7 @@ def now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-class Library(ReviewMixin):
+class Library(ReviewMixin, SegmentsMixin):
     def __init__(self, root: Path):
         self.root = root.expanduser().resolve()
         self.root.mkdir(parents=True, exist_ok=True)

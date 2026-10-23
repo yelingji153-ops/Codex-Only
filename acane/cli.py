@@ -34,6 +34,16 @@ def main(argv=None):
     exporter.add_argument("--job", action="append", help="选择任务；可重复指定，默认所有通过的人声")
     exporter.add_argument("--sample-rate", type=int, choices=SAMPLE_RATES, help="不指定则保持各音轨采样率")
     exporter.add_argument("--channels", type=int, choices=(1, 2), help="不指定则保持各音轨声道数")
+    planner = commands.add_parser('segment-plan', help='分析已通过人声，保存可复核的切分建议')
+    planner.add_argument('--job', required=True)
+    planner.add_argument('--output', required=True)
+    planner.add_argument('--silence-db', type=float, default=-45)
+    planner.add_argument('--min-silence', type=float, default=0.3)
+    planner.add_argument('--padding', type=float, default=0.12)
+    planner.add_argument('--max-seconds', type=float, default=12)
+    renderer = commands.add_parser('segment-render', help='将切分方案另存为待复核 WAV 片段，不进入训练集')
+    renderer.add_argument('--plan', required=True)
+    renderer.add_argument('--intervals', type=Path, help='可选 JSON 时间列表：start_s/end_s，覆盖自动建议')
     importer = commands.add_parser("import", help="导入文件或目录，保存原件副本")
     importer.add_argument("paths", nargs="+", type=Path)
     importer.add_argument("--kind", choices=KINDS, default="unknown")
@@ -76,6 +86,15 @@ def main(argv=None):
                 failed = False
             elif args.command == "export":
                 data = library.export_dataset(args.job, args.sample_rate, args.channels)
+                failed = False
+            elif args.command == 'segment-plan':
+                data = library.segment_plan(args.job, args.output, {
+                    'silence_db': args.silence_db, 'min_silence_s': args.min_silence,
+                    'padding_s': args.padding, 'max_segment_s': args.max_seconds})
+                failed = False
+            elif args.command == 'segment-render':
+                intervals = json.loads(args.intervals.read_text(encoding='utf-8')) if args.intervals else None
+                data = library.render_segments(args.plan, intervals)
                 failed = False
             else:
                 mdxc_params = None

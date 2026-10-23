@@ -149,3 +149,19 @@ class WebReviewTest(unittest.TestCase):
         self.assertEqual(upload('archive.zip')[0],400)
         self.assertEqual(self.request('POST','/api/separate',{'asset_ids':[result['id']],'force':False})[0],400)
         self.assertEqual(len(json.loads(self.request('GET','/api/workbench')[2])['assets']),1)
+
+    def test_segment_endpoints_preserve_pending_draft_status(self):
+        self.login()
+        payload={'job_id':self.job,'output_path':self.output['path'],'options':{}}
+        self.assertEqual(self.request('POST','/api/segment-plan',payload)[0],400)
+        self.assertEqual(self.request('POST','/api/review',self.review_data())[0],200)
+        status,_,body=self.request('POST','/api/segment-plan',payload)
+        self.assertEqual(status,200)
+        plan=json.loads(body)
+        status,_,body=self.request('POST','/api/segment-render',{'plan_id':plan['id'],'intervals':[{'start_s':0,'end_s':.1}]})
+        self.assertEqual(status,200)
+        result=json.loads(body)
+        self.assertFalse(result['training_eligible'])
+        self.assertEqual(result['review_status'],'pending')
+        self.assertTrue(Path(result['manifest']).is_file())
+        self.assertEqual(self.request('POST','/api/segment-render',{'plan_id':'../escape','intervals':None})[0],400)

@@ -128,6 +128,16 @@ class ReviewHandler(BaseHTTPRequestHandler):
                     return self._audio(library)
             elif self.command == 'POST':
                 data = self._body()
+                if path == '/api/segment-plan':
+                    if set(data) != {'job_id', 'output_path', 'options'}:
+                        raise ValueError('切分分析请求字段不完整。')
+                    if any(not isinstance(data[k], str) for k in ('job_id', 'output_path')):
+                        raise ValueError('请选择有效的人声音轨。')
+                    return self._json(200, library.segment_plan(**data))
+                if path == '/api/segment-render':
+                    if set(data) != {'plan_id', 'intervals'}:
+                        raise ValueError('切分保存请求字段不完整。')
+                    return self._json(200, library.render_segments(**data))
                 if path == '/api/review':
                     required = {'job_id','output_path','decision','role','note','expected_sequence','expected_sha256'}
                     if set(data) != required:
