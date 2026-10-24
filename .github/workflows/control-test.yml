@@ -1,0 +1,24 @@
+name: Build control test
+on:
+  push:
+    branches: [codex/acane-preprocessing]
+    paths: [.github/workflows/control-test.yml]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python scripts/build_control_test.py "$RUNNER_TEMP/ACAne-Control-Test.zip"
+      - name: Upload draft assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          test "$(gh release view acane-control-v0.1.0-preview --json isDraft --jq .isDraft)" = true
+          gh release upload acane-control-v0.1.0-preview "$RUNNER_TEMP/ACAne-Control-Test.zip" "$RUNNER_TEMP/ACAne-Control-Test.zip.sha256" --clobber
