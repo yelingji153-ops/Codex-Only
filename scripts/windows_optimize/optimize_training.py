@@ -184,7 +184,9 @@ def execute():
         if label not in state['completed']:
             state['completed'].append(label)
         save(state_path, state)
-    print('\n100 轮训练完成。模型保存到：'+str(exp), flush=True)
+    from activate_model import activate
+    activate(exp, source, BASE)
+    print('\n100 轮训练完成并已替换转换用模型。新模型归档：'+str(exp), flush=True)
     os.startfile(str(exp))
 
 

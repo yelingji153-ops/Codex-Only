@@ -3,7 +3,7 @@ import hashlib
 import sys
 import zipfile
 root=Path(__file__).resolve().parents[1];out=Path(sys.argv[1]);out.parent.mkdir(parents=True,exist_ok=True)
-files={'Start_Optimized_100.cmd':'scripts/windows_optimize/Start_Optimized_100.cmd','Compare_100_Models.cmd':'scripts/windows_optimize/Compare_100_Models.cmd','optimize-addon/optimize_training.py':'scripts/windows_optimize/optimize_training.py','optimize-addon/compare_models.py':'scripts/windows_optimize/compare_models.py','optimize-addon/control_helpers.py':'scripts/windows_control/control_test.py','optimize-addon/verify_training.py':'scripts/windows_training/verify_training.py','100轮训练说明.md':'docs/optimized-training.md'}
+files={'optimize-addon/activate_model.py':'scripts/windows_optimize/activate_model.py','Start_Optimized_100.cmd':'scripts/windows_optimize/Start_Optimized_100.cmd','Compare_100_Models.cmd':'scripts/windows_optimize/Compare_100_Models.cmd','optimize-addon/optimize_training.py':'scripts/windows_optimize/optimize_training.py','optimize-addon/compare_models.py':'scripts/windows_optimize/compare_models.py','optimize-addon/control_helpers.py':'scripts/windows_control/control_test.py','optimize-addon/verify_training.py':'scripts/windows_training/verify_training.py','100轮训练说明.md':'docs/optimized-training.md'}
 with zipfile.ZipFile(out,'w',zipfile.ZIP_DEFLATED) as z:
  for name,src in files.items():
   data=(root/src).read_bytes()

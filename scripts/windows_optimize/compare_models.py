@@ -31,7 +31,9 @@ def main():
     if duration<5:raise ValueError('test.wav 至少需要 5 秒干净人声。')
     name=BASE+'_opt100';run=ROOT/'workspace-data/training'/name
     exp=run/'models'/name
-    models=[('old_030e',helper.MODEL),*select_models(exp)]
+    backup=helper.MODEL.parent/'backup-before-opt100'/helper.MODEL.name
+    baseline=backup if backup.exists() else helper.MODEL
+    models=[('old_030e',baseline),*select_models(exp)]
     for _,model in models:helper.check_model(model)
     folder=run/'comparisons'/(time.strftime('%Y%m%d_%H%M%S')+'_'+uuid.uuid4().hex[:6]);folder.mkdir(parents=True)
     ffmpeg=ROOT/'tools/ffmpeg/bin/ffmpeg.exe'
