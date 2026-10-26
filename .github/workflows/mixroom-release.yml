@@ -1,0 +1,30 @@
+name: Build MIXROOM Windows release
+on:
+  push:
+    branches: [codex/mixroom-desktop-release]
+permissions:
+  contents: write
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build:win
+      - name: Publish portable executable
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $file = 'dist/MIXROOM-1.0.0-Windows-x64.exe'
+          $hash = (Get-FileHash $file -Algorithm SHA256).Hash.ToLower()
+          "$hash  MIXROOM-1.0.0-Windows-x64.exe" | Set-Content "$file.sha256"
+          gh release upload mixroom-v1.0.0-preview $file "$file.sha256" --repo $env:GITHUB_REPOSITORY --clobber
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          gh release edit mixroom-v1.0.0-preview --repo $env:GITHUB_REPOSITORY --draft=false --prerelease
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

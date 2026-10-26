@@ -1,0 +1,525 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#161717" />
+    <meta
+      name="description"
+      content="在浏览器内混合伴奏与人声，添加混响、调整音量、对齐节奏，导出 WAV。音频不上传。"
+    />
+    <title>MIXROOM · 让声音，合而为一</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <svg class="svg-defs" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <defs>
+        <symbol id="i-mix" viewBox="0 0 24 24">
+          <path
+            d="M5 3v6m0 6v6M12 3v11m0 6v1M19 3v2m0 6v10M2 9h6v6H2zm7 5h6v6H9zm7-9h6v6h-6z"
+          />
+        </symbol>
+        <symbol id="i-wave" viewBox="0 0 24 24">
+          <path d="M3 10v4m4-8v12m5-16v20m5-16v12m4-8v4" />
+        </symbol>
+        <symbol id="i-upload" viewBox="0 0 24 24">
+          <path
+            d="M12 16V3m-5 5 5-5 5 5M4 15v5a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-5"
+          />
+        </symbol>
+        <symbol id="i-mic" viewBox="0 0 24 24">
+          <rect x="9" y="2" width="6" height="13" rx="3" />
+          <path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3m-4 0h8" />
+        </symbol>
+        <symbol id="i-music" viewBox="0 0 24 24">
+          <path d="M9 18V5l12-3v13M9 9l12-3" />
+          <ellipse cx="5.5" cy="18.5" rx="3.5" ry="2.5" />
+          <ellipse cx="17.5" cy="15.5" rx="3.5" ry="2.5" />
+        </symbol>
+        <symbol id="i-play" viewBox="0 0 24 24">
+          <path d="m8 4 12 8-12 8z" />
+        </symbol>
+        <symbol id="i-pause" viewBox="0 0 24 24">
+          <path d="M8 5v14M16 5v14" />
+        </symbol>
+        <symbol id="i-reset" viewBox="0 0 24 24">
+          <path d="M4 5v14m15-14L7 12l12 7z" />
+        </symbol>
+        <symbol id="i-download" viewBox="0 0 24 24">
+          <path d="M12 3v13m-5-5 5 5 5-5M4 17v4h16v-4" />
+        </symbol>
+        <symbol id="i-headphones" viewBox="0 0 24 24">
+          <path d="M4 14v-3a8 8 0 0 1 16 0v3" />
+          <rect x="3" y="12" width="4" height="9" rx="2" />
+          <rect x="17" y="12" width="4" height="9" rx="2" />
+        </symbol>
+        <symbol id="i-check" viewBox="0 0 24 24">
+          <path d="m5 12 4 4L19 6" />
+        </symbol>
+        <symbol id="i-arrow" viewBox="0 0 24 24">
+          <path d="M5 12h14m-5-5 5 5-5 5" />
+        </symbol>
+        <symbol id="i-shield" viewBox="0 0 24 24">
+          <path d="m12 2 9 4v6c0 5-9 10-9 10S3 17 3 12V6zM8 12l3 3 5-6" />
+        </symbol>
+        <symbol id="i-close" viewBox="0 0 24 24">
+          <path d="m6 6 12 12M6 18 18 6" />
+        </symbol>
+        <symbol id="i-spark" viewBox="0 0 24 24">
+          <path d="m12 2 2.5 7.5L22 12l-7.5 2.5L12 22l-2.5-7.5L2 12l7.5-2.5z" />
+        </symbol>
+      </defs>
+    </svg>
+    <aside class="rail" aria-label="工作区">
+      <a href="/" class="brand-icon" aria-label="MIXROOM 首页"
+        ><svg><use href="#i-wave" /></svg
+      ></a>
+      <div class="rail-line"></div>
+      <span class="rail-active" title="混音工作台"
+        ><svg><use href="#i-mix" /></svg></span
+      ><span class="rail-bottom">MR<i></i></span>
+    </aside>
+    <div class="app-shell">
+      <header class="topbar">
+        <a class="wordmark" href="/"
+          >MIXROOM<span>/</span><small>在线混音工作台</small></a
+        >
+        <div class="topbar-right">
+          <span class="local-badge"><i></i>本地音频处理</span
+          ><span class="version">VOL. 001</span>
+        </div>
+      </header>
+      <main>
+        <section class="intro">
+          <div>
+            <p class="eyebrow"><i></i>YOUR SOUND, TOGETHER.</p>
+            <h1>让声音，<span>合而为一。</span></h1>
+            <p class="intro-copy">
+              一段伴奏，一把好声音。你的下一首作品，从这里开始。
+            </p>
+          </div>
+          <button id="demo-button" class="button button-outline">
+            <svg><use href="#i-play" /></svg>体验示例<svg class="arrow">
+              <use href="#i-arrow" />
+            </svg>
+          </button>
+        </section>
+        <div class="workspace-grid">
+          <div class="left-column">
+            <section class="studio" aria-label="双轨混音工作台">
+              <div class="studio-heading">
+                <div>
+                  <i class="status-dot"></i>
+                  <h2>混音工作台</h2>
+                  <span class="tag">2 TRACKS</span>
+                </div>
+                <button id="clear-button" class="text-button" disabled>
+                  清空工程
+                </button>
+              </div>
+              <div class="timeline-header">
+                <span>音轨 / TRACK</span
+                ><span id="timeline-duration">总时长 00:00</span>
+              </div>
+              <div class="ruler" id="ruler" aria-hidden="true">
+                <span>00:00</span><span>00:05</span><span>00:10</span
+                ><span>00:15</span><span>00:20</span><span>00:25</span>
+              </div>
+              <article class="track track-backing" data-track="0">
+                <div class="track-heading">
+                  <div class="track-name">
+                    <span class="track-icon"
+                      ><svg><use href="#i-music" /></svg
+                    ></span>
+                    <div>
+                      <h3>伴奏</h3>
+                      <span>INSTRUMENTAL</span>
+                    </div>
+                  </div>
+                  <div class="track-actions">
+                    <span class="track-number">01</span
+                    ><button
+                      class="mini-button mute"
+                      aria-label="静音伴奏"
+                      aria-pressed="false"
+                      title="静音"
+                    >
+                      M</button
+                    ><button
+                      class="mini-button solo"
+                      aria-label="独听伴奏"
+                      aria-pressed="false"
+                      title="独听"
+                    >
+                      S
+                    </button>
+                  </div>
+                </div>
+                <input
+                  id="file-0"
+                  class="file-input"
+                  type="file"
+                  accept="audio/*,.mp3,.wav,.m4a,.ogg,.flac,.aac"
+                  aria-label="选择伴奏文件"
+                />
+                <button class="dropzone" data-index="0">
+                  <span class="upload-icon"
+                    ><svg><use href="#i-upload" /></svg></span
+                  ><span class="drop-title"
+                    >点击上传<span>，或拖入伴奏文件</span></span
+                  ><span class="drop-formats">MP3, WAV, M4A, OGG 等</span>
+                </button>
+                <div class="loaded-track" hidden>
+                  <div class="file-meta">
+                    <span class="filename"></span
+                    ><span class="file-duration"></span
+                    ><button class="replace-button">替换</button>
+                  </div>
+                  <button
+                    class="waveform-button"
+                    aria-label="点击伴奏波形定位播放位置"
+                  >
+                    <canvas class="waveform"></canvas>
+                  </button>
+                </div>
+                <div class="track-controls">
+                  <label class="volume-control"
+                    ><svg><use href="#i-wave" /></svg><span>音量</span
+                    ><input
+                      type="range"
+                      class="volume"
+                      min="0"
+                      max="150"
+                      value="80"
+                      aria-label="伴奏音量"
+                    /><output class="volume-value"
+                      >80<span>%</span></output
+                    ></label
+                  ><label class="pan-control"
+                    ><span>声像</span><small>L</small
+                    ><input
+                      type="range"
+                      class="pan"
+                      min="-100"
+                      max="100"
+                      value="0"
+                      aria-label="伴奏声像"
+                    /><small>R</small></label
+                  >
+                </div>
+              </article>
+              <article class="track track-vocal" data-track="1">
+                <div class="track-heading">
+                  <div class="track-name">
+                    <span class="track-icon"
+                      ><svg><use href="#i-mic" /></svg
+                    ></span>
+                    <div>
+                      <h3>人声</h3>
+                      <span>VOCALS</span>
+                    </div>
+                  </div>
+                  <div class="track-actions">
+                    <span class="track-number">02</span
+                    ><button
+                      class="mini-button mute"
+                      aria-label="静音人声"
+                      aria-pressed="false"
+                      title="静音"
+                    >
+                      M</button
+                    ><button
+                      class="mini-button solo"
+                      aria-label="独听人声"
+                      aria-pressed="false"
+                      title="独听"
+                    >
+                      S
+                    </button>
+                  </div>
+                </div>
+                <input
+                  id="file-1"
+                  class="file-input"
+                  type="file"
+                  accept="audio/*,.mp3,.wav,.m4a,.ogg,.flac,.aac"
+                  aria-label="选择人声文件"
+                />
+                <button class="dropzone" data-index="1">
+                  <span class="upload-icon"
+                    ><svg><use href="#i-upload" /></svg></span
+                  ><span class="drop-title"
+                    >点击上传<span>，或拖入人声文件</span></span
+                  ><span class="drop-formats">MP3, WAV, M4A, OGG 等</span>
+                </button>
+                <div class="loaded-track" hidden>
+                  <div class="file-meta">
+                    <span class="filename"></span
+                    ><span class="file-duration"></span
+                    ><button class="replace-button">替换</button>
+                  </div>
+                  <button
+                    class="waveform-button"
+                    aria-label="点击人声波形定位播放位置"
+                  >
+                    <canvas class="waveform"></canvas>
+                  </button>
+                </div>
+                <div class="track-controls">
+                  <label class="volume-control"
+                    ><svg><use href="#i-wave" /></svg><span>音量</span
+                    ><input
+                      type="range"
+                      class="volume"
+                      min="0"
+                      max="150"
+                      value="100"
+                      aria-label="人声音量"
+                    /><output class="volume-value"
+                      >100<span>%</span></output
+                    ></label
+                  ><label class="pan-control"
+                    ><span>声像</span><small>L</small
+                    ><input
+                      type="range"
+                      class="pan"
+                      min="-100"
+                      max="100"
+                      value="0"
+                      aria-label="人声声像"
+                    /><small>R</small></label
+                  >
+                </div>
+              </article>
+              <div class="alignment">
+                <div>
+                  <span class="alignment-symbol">⇄</span>
+                  <div>
+                    <h3>人声对齐</h3>
+                    <p>微调人声时间，让节奏刚刚好</p>
+                  </div>
+                </div>
+                <div class="offset-input">
+                  <button id="offset-minus" aria-label="人声提前 50 毫秒">
+                    −</button
+                  ><label
+                    ><input
+                      id="offset"
+                      type="number"
+                      min="-30000"
+                      max="30000"
+                      step="50"
+                      value="0"
+                      aria-label="人声时间偏移，毫秒"
+                    /><span>ms</span></label
+                  ><button id="offset-plus" aria-label="人声延后 50 毫秒">
+                    +
+                  </button>
+                </div>
+              </div>
+              <div class="transport">
+                <div class="transport-buttons">
+                  <button
+                    id="rewind"
+                    class="icon-button"
+                    aria-label="回到开头"
+                    disabled
+                  >
+                    <svg><use href="#i-reset" /></svg></button
+                  ><button
+                    id="play-button"
+                    class="play-button"
+                    aria-label="播放"
+                    disabled
+                  >
+                    <svg><use href="#i-play" /></svg>
+                  </button>
+                </div>
+                <span id="current-time" class="time-current"
+                  >00:00<span>.00</span></span
+                ><span class="time-separator">/</span
+                ><span id="total-time" class="time-total">00:00</span
+                ><span class="transport-hint"><kbd>space</kbd>播放 / 暂停</span>
+              </div>
+              <label class="seek-label"
+                ><span class="sr-only">播放进度</span
+                ><input
+                  id="seek"
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value="0"
+                  disabled
+              /></label>
+            </section>
+            <section class="effects-panel" aria-label="人声效果">
+              <div class="effects-heading">
+                <div>
+                  <svg><use href="#i-spark" /></svg>
+                  <h2>给声音，一点氛围。</h2>
+                  <span>VOCAL FX</span>
+                </div>
+                <button id="effects-reset" class="text-button">重置效果</button>
+              </div>
+              <div class="effects-body">
+                <div class="effect-room">
+                  <label for="room">混响空间</label
+                  ><select id="room">
+                    <option value="small">小房间 · 贴近自然</option>
+                    <option value="studio" selected>录音棚 · 温暖通透</option>
+                    <option value="hall">音乐厅 · 空灵辽阔</option>
+                  </select>
+                </div>
+                <label class="effect-slider"
+                  ><span>混响湿度<output id="wet-value">20%</output></span
+                  ><input
+                    id="wet"
+                    type="range"
+                    min="0"
+                    max="70"
+                    value="20"
+                    aria-label="混响湿度"
+                  /><small>干声<span>空间感</span></small></label
+                ><label class="effect-slider"
+                  ><span>人声明亮度<output id="tone-value">0 dB</output></span
+                  ><input
+                    id="tone"
+                    type="range"
+                    min="-6"
+                    max="6"
+                    step=".5"
+                    value="0"
+                    aria-label="人声明亮度"
+                  /><small>温暖<span>明亮</span></small></label
+                >
+              </div>
+            </section>
+          </div>
+          <aside class="output-panel" aria-label="混音输出设置">
+            <div class="output-heading">
+              <svg><use href="#i-mix" /></svg>
+              <h2>混音输出</h2>
+              <span>MASTER</span>
+            </div>
+            <div class="master-display">
+              <span class="display-label">MASTER VOLUME</span>
+              <div class="master-number">
+                <output id="master-value">80</output><span>%</span>
+              </div>
+              <div class="meter" aria-label="实时输出电平">
+                <div class="meter-row">
+                  <span>L</span>
+                  <div><i id="meter-left"></i></div>
+                </div>
+                <div class="meter-row">
+                  <span>R</span>
+                  <div><i id="meter-right"></i></div>
+                </div>
+              </div>
+              <div class="meter-scale">
+                <span>−∞</span><span>−24</span><span>−12</span><span>0 dB</span>
+              </div>
+            </div>
+            <label class="master-slider-label"
+              ><span>主音量</span><svg><use href="#i-headphones" /></svg
+              ><input
+                id="master-volume"
+                type="range"
+                min="0"
+                max="100"
+                value="80"
+                aria-label="主音量"
+            /></label>
+            <label class="compress-setting"
+              ><span>动态压缩<small>柔和控制，让声音更均衡</small></span
+              ><input
+                id="compress"
+                type="checkbox"
+                role="switch"
+                aria-label="动态压缩" /><span class="switch"></span
+            ></label>
+            <div class="panel-divider"></div>
+            <div class="settings-heading">
+              导出设置<span>EXPORT SETTINGS</span>
+            </div>
+            <div class="setting-row">
+              <span>文件格式</span
+              ><span class="format-pill">WAV<span>无损音质</span></span>
+            </div>
+            <div class="setting-row">
+              <span>采样率</span><strong>44.1 kHz</strong>
+            </div>
+            <div class="setting-row">
+              <span>位深 / 声道</span><strong>16 bit / 立体声</strong>
+            </div>
+            <label class="protection"
+              ><input type="checkbox" id="protect-peak" checked /><span
+                class="check-box"
+                ><svg><use href="#i-check" /></svg></span
+              ><span
+                >导出峰值保护<small>避免音量过大产生失真</small></span
+              ></label
+            >
+            <button id="export-button" class="button export-button" disabled>
+              <svg><use href="#i-download" /></svg><span>导出混音</span
+              ><svg class="arrow"><use href="#i-arrow" /></svg>
+            </button>
+            <p id="export-hint" class="export-hint">添加音轨，开始你的创作</p>
+            <div class="privacy-note">
+              <svg><use href="#i-shield" /></svg>
+              <p>
+                你的声音，只属于你。<span
+                  >所有音频仅在浏览器内处理，不会上传。</span
+                >
+              </p>
+            </div>
+          </aside>
+        </div>
+        <section class="quick-guide" aria-label="使用步骤">
+          <div class="guide-title">
+            <span>从灵感到作品</span><small>JUST THREE STEPS</small>
+          </div>
+          <div class="guide-step">
+            <span>01</span>
+            <div>
+              <h3>添加你的声音</h3>
+              <p>导入伴奏和人声文件</p>
+            </div>
+          </div>
+          <span class="guide-arrow">↗</span>
+          <div class="guide-step">
+            <span>02</span>
+            <div>
+              <h3>找到最佳平衡</h3>
+              <p>调节音量，加入一点氛围</p>
+            </div>
+          </div>
+          <span class="guide-arrow">↗</span>
+          <div class="guide-step">
+            <span>03</span>
+            <div>
+              <h3>让作品被听见</h3>
+              <p>导出 WAV，分享你的创作</p>
+            </div>
+          </div>
+        </section>
+        <footer>
+          <span
+            >MIXROOM<span class="footer-dot">·</span
+            >每一种声音，都值得被听见。</span
+          ><span
+            >MADE FOR YOUR NEXT TRACK <span class="footer-spark">✳</span></span
+          >
+        </footer>
+      </main>
+    </div>
+    <div id="notice" class="notice" role="status" aria-live="polite" hidden>
+      <span></span
+      ><button aria-label="关闭通知">
+        <svg><use href="#i-close" /></svg>
+      </button>
+    </div>
+    <script type="module" src="/src/app.js"></script>
+  </body>
+</html>

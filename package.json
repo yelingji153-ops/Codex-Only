@@ -1,0 +1,28 @@
+{
+  "name": "mixroom",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Offline vocal and instrumental mixer with reverb",
+  "author": "MIXROOM",
+  "main": "desktop/main.cjs",
+  "type": "module",
+  "scripts": {
+    "start": "node server.mjs",
+    "dev": "node server.mjs",
+    "test": "node --test",
+    "desktop": "electron .",
+    "build:win": "electron-builder --win portable --x64 --publish never"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": { "electron": "45.0.0", "electron-builder": "26.18.0" },
+  "build": {
+    "appId": "com.mixroom.desktop",
+    "productName": "MIXROOM",
+    "directories": { "output": "dist" },
+    "files": ["desktop/**", "index.html", "styles.css", "src/**", "package.json"],
+    "win": { "target": "portable", "signAndEditExecutable": false },
+    "portable": { "artifactName": "MIXROOM-${version}-Windows-x64.exe" }
+  }
+}
